@@ -334,7 +334,7 @@ async function optimizePrompt() {
   try {
     var mainImg = images.find(function(i){return i.type==='fachada';}) || images[0];
     var styleContext = document.querySelector('.style-btn.active') ? document.querySelector('.style-btn.active').textContent : 'Fotorrealista';
-    var res = await fetch('/.netlify/functions/claude', {
+    var res = await fetch('/api/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -358,7 +358,7 @@ async function optimizePrompt() {
       status.textContent = '✓ Prompt optimizado — se usará automáticamente al generar';
       status.style.color = '#2a6a2a';
     } else {
-      throw new Error('No se pudo optimizar');
+      throw new Error('Respuesta de Claude: ' + JSON.stringify(data).substring(0, 200));
     }
   } catch(err) {
     status.textContent = 'Error: ' + err.message;
