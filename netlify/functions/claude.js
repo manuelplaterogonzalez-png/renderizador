@@ -13,8 +13,14 @@ exports.handler = async (event) => {
     };
   }
 
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  
+  if (!apiKey) {
+    return {
+      statusCode: 500,
+      headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'API key no configurada en variables de entorno' })
+    };
   }
 
   try {
@@ -28,7 +34,7 @@ exports.handler = async (event) => {
         headers: {
           'Content-Type': 'application/json',
           'anthropic-version': '2023-06-01',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'x-api-key': apiKey,
           'Content-Length': Buffer.byteLength(body)
         }
       };
