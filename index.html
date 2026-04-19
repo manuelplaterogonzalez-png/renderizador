@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Render Arquitectónico IA</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a18; min-height: 100vh; padding: 2rem 1rem; }
+  .container { max-width: 740px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .sub { font-size: 14px; color: #888; margin-bottom: 1.5rem; }
+  .card { background: #fff; border: 1px solid #e0deda; border-radius: 12px; padding: 1.25rem; margin-bottom: 14px; }
+  .field-label { display: block; font-size: 13px; color: #666; margin-bottom: 10px; font-weight: 500; }
+  .add-img-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1.5px dashed #ccc; border-radius: 8px; background: #fafaf8; color: #666; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .add-img-btn:hover { border-color: #888; color: #333; }
+  .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+  .img-card { border: 1px solid #e0deda; border-radius: 8px; overflow: hidden; background: #fafaf8; }
+  .img-card img { width: 100%; height: 110px; object-fit: cover; display: block; }
+  .img-card-bottom { padding: 6px 8px; display: flex; align-items: center; gap: 6px; }
+  .img-type-select { flex: 1; font-size: 11px; padding: 4px 6px; border: 1px solid #d0ceca; border-radius: 6px; background: #fff; font-family: inherit; color: #333; }
+  .img-remove { width: 22px; height: 22px; border: none; background: #fcebeb; color: #a32d2d; border-radius: 4px; cursor: pointer; font-size: 13px; flex-shrink: 0; }
+  .model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .model-btn { padding: 12px; border: 1px solid #e0deda; border-radius: 8px; background: #fff; color: #555; font-size: 13px; cursor: pointer; font-family: inherit; text-align: left; transition: all 0.15s; }
+  .model-btn.active { border-color: #378ADD; background: #E6F1FB; color: #0C447C; font-weight: 600; }
+  .model-btn small { display: block; font-size: 11px; color: #999; margin-top: 3px; font-weight: 400; }
+  .model-btn.active small { color: #5090C0; }
+  .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #e8f4e8; color: #2a6a2a; margin-left: 4px; }
+  .style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .style-btn { padding: 10px 6px; border: 1px solid #e0deda; border-radius: 8px; background: #fff; color: #666; font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .style-btn.active { border-color: #378ADD; background: #E6F1FB; color: #0C447C; font-weight: 600; }
+  textarea { width: 100%; font-size: 13px; padding: 10px 12px; border: 1px solid #d0ceca; border-radius: 8px; font-family: inherit; resize: vertical; background: #fff; color: #1a1a18; min-height: 80px; }
+  .run-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #1a1a18; color: #fff; font-size: 16px; font-weight: 500; cursor: pointer; font-family: inherit; }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status { font-size: 14px; color: #888; text-align: center; padding: 2rem; }
+  .loader-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; gap: 12px; }
+  .loader-label { font-size: 13px; color: #888; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  @keyframes sweep { 0%{transform:rotate(-10deg)} 100%{transform:rotate(10deg)} }
+  .progress-bar { height: 4px; background: #eee; border-radius: 2px; margin-top: 10px; }
+  .progress-fill { height: 100%; background: #378ADD; border-radius: 2px; transition: width 0.4s; width: 0%; }
+  .error { background: #fcebeb; color: #a32d2d; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 10px; }
+  .success { background: #e8f4e8; color: #2a6a2a; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 10px; }
+  .result-img { width: 100%; border-radius: 8px; display: block; }
+  .download-btn { display: block; text-align: center; margin-top: 10px; padding: 11px; border: 1px solid #d0ceca; border-radius: 8px; background: #fff; color: #1a1a18; text-decoration: none; font-size: 14px; }
+  .download-btn:hover { background: #f5f4f0; }
+  .debug { background: #f0f0f0; border-radius: 8px; padding: 10px; font-size: 11px; font-family: monospace; margin-top: 10px; word-break: break-all; }
+  .step-num { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #1a1a18; color: #fff; font-size: 11px; font-weight: 600; text-align: center; line-height: 20px; margin-right: 6px; }
+  .upload-status { font-size: 11px; color: #888; margin-top: 4px; }
+  .camera-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1.5px solid #1a1a18; border-radius: 8px; background: #1a1a18; color: #fff; font-size: 13px; cursor: pointer; font-family: inherit; margin-left: 8px; }
+  .camera-btn:hover { opacity: 0.85; }
+  @media (max-width: 600px) {
+    body { padding: 1rem 0.5rem; }
+    .model-grid { grid-template-columns: 1fr; }
+    .style-grid { grid-template-columns: repeat(2, 1fr); }
+    .images-grid { grid-template-columns: repeat(2, 1fr); }
+    h1 { font-size: 18px; }
+    .run-btn { font-size: 14px; padding: 12px; }
+    .card { padding: 1rem; }
+  }
+  .img-card.uploading { opacity: 0.6; }
+  .img-card.uploaded { border-color: #2a6a2a; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Render Arquitectónico IA</h1>
+  <p class="sub">Subí los dibujos — Claude los analiza y Seedream genera el render</p>
+
+  <div class="card">
+    <label class="field-label"><span class="step-num">1</span> Subí los dibujos del proyecto</label>
+    <div id="dropzoneArea" style="border:1.5px dashed #ccc;border-radius:8px;padding:16px;text-align:center;margin-bottom:10px;transition:border-color 0.2s">
+      <label class="add-img-btn" for="fileInput" style="display:inline-flex;margin-bottom:6px">+ Agregar imagen</label>
+      <label class="camera-btn" for="cameraInput" style="display:inline-flex;margin-bottom:6px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Sacar foto
+      </label>
+      <p style="font-size:11px;color:#aaa;margin:0">o arrastrá una imagen acá · o pegá con Ctrl+V</p>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="onFilesChange(this)">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="onFilesChange(this)">
+    <div class="images-grid" id="imagesGrid"></div>
+  </div>
+
+  <div class="card">
+    <label class="field-label"><span class="step-num">2</span> Modelo</label>
+    <div class="model-grid">
+      <button class="model-btn active" onclick="setModel(this, 'seedream')">
+        Seedream 4.5 Edit <span class="badge">★ Recomendado</span>
+        <small>Usa tu dibujo como referencia estructural</small>
+      </button>
+      <button class="model-btn" onclick="setModel(this, 'seedream5')">
+        Seedream 5.0 Lite Edit
+        <small>Última versión · más creativo</small>
+      </button>
+      <button class="model-btn" onclick="setModel(this, 'seedream-t2i')">
+        Seedream 4.5 Text-only
+        <small>Solo prompt · sin imagen de control</small>
+      </button>
+      <button class="model-btn" onclick="setModel(this, 'flux-dev')">
+        Flux Dev
+        <small>Fal.ai · rápido</small>
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="field-label"><span class="step-num">3</span> Estilo</label>
+    <div class="style-grid">
+      <button class="style-btn active" onclick="setStyle(this, 'photorealistic architectural render, modern building, natural daylight, high quality, 8k, professional visualization')">Fotorrealista</button>
+      <button class="style-btn" onclick="setStyle(this, 'minimalist architectural render, white concrete and glass, clean lines, soft daylight')">Minimalista</button>
+      <button class="style-btn" onclick="setStyle(this, 'architectural render, warm golden hour, sunset lighting, beautiful orange sky, cinematic')">Atardecer</button>
+      <button class="style-btn" onclick="setStyle(this, 'architectural watercolor illustration, soft colors, artistic, hand-painted style')">Acuarela</button>
+      <button class="style-btn" onclick="setStyle(this, 'night architectural render, dramatic lighting, dark sky, illuminated facade, cinematic')">Nocturno</button>
+      <button class="style-btn" onclick="setStyle(this, 'brutalist architecture, raw concrete texture, dramatic overcast sky, moody shadows')">Brutalista</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="field-label"><span class="step-num">4</span> Describí el proyecto en español</label>
+    <textarea id="promptText" rows="3" placeholder="Ej: casa de dos pisos con pilotis, fachada de hormigón visto, jardín amplio con árboles, barrio residencial tranquilo..."></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+      <button onclick="optimizePrompt()" id="optimizeBtn" style="padding:8px 14px;border:1px solid #d0ceca;border-radius:8px;background:#fff;color:#333;font-size:13px;cursor:pointer;font-family:inherit;flex-shrink:0">Optimizar prompt con IA</button>
+      <span id="optimizeStatus" style="font-size:12px;color:#888"></span>
+    </div>
+    <div id="optimizedPromptBox" style="display:none;margin-top:8px;background:#f8f7f4;border-radius:8px;padding:10px 12px;font-size:12px;color:#555;font-family:monospace;word-break:break-all"></div>
+  </div>
+
+  <div class="card" id="strengthCard">
+    <label class="field-label"><span class="step-num">5</span> Fidelidad al boceto <span id="strengthNote" style="font-size:11px;color:#aaa;font-weight:400">(solo Flux Dev)</span></label>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span style="font-size:12px;color:#999">Libre</span>
+      <input type="range" id="strength" min="0.3" max="0.95" step="0.05" value="0.45" style="flex:1" oninput="document.getElementById('strengthVal').textContent=Math.round(this.value*100)+'%'">
+      <span style="font-size:12px;color:#999">Exacto</span>
+      <span style="font-size:13px;color:#555;min-width:36px;text-align:right" id="strengthVal">45%</span>
+    </div>
+  </div>
+  <button class="run-btn" id="runBtn" disabled onclick="generateRender()">Subí al menos un dibujo primero</button>
+  <button class="run-btn" style="margin-top:8px;background:#555;opacity:1;cursor:pointer" onclick="generateTextOnly()">Generar solo con prompt (sin imagen)</button>
+  <div id="errorBox"></div>
+  <div id="successBox"></div>
+
+  <div class="card" style="margin-top:14px">
+    <label class="field-label">Resultado</label>
+    <div id="resultBox"><p class="status">El render aparecerá acá</p></div>
+    <div class="progress-bar" id="progressBar" style="display:none"><div class="progress-fill" id="progressFill"></div></div>
+    <a id="downloadLink" class="download-btn" style="display:none">Descargar render</a>
+  </div>
+
+  <div class="debug" id="debugBox">Debug: esperando...</div>
+</div>
+
+<script>
+var FAL_KEY = 'cffe9467-3063-4530-a8fe-5aa7a1328c2d:2071ffc2bd693b5d5aeacb81f6c07a51';
+var WAVESPEED_KEY = 'c901ae7fcd75b97265eeba2ecbadd1041611d207d1cab43214215d62f9d5ac6b';
+var CLOUDINARY_CLOUD = 'dzw2nx73i';
+var CLOUDINARY_API_KEY = '574269548366135';
+var CLOUDINARY_API_SECRET = 'ZWwG_QUxUdZLWvHPbGixphkwsbY';
+var CLOUDINARY_UPLOAD_PRESET = 'render_arquitectonico';
+
+var images = [];
+var selectedStyle = 'photorealistic architectural render, modern building, natural daylight, high quality, 8k, professional visualization';
+var currentModel = 'seedream';
+
+var TYPE_LABELS = { 'fachada':'Fachada (control)', 'perspectiva':'Perspectiva', 'planta':'Planta', 'corte':'Corte', 'detalle':'Detalle', 'otro':'Otro' };
+
+function setModel(btn, model) {
+  document.querySelectorAll('.model-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  currentModel = model;
+}
+
+function setStyle(btn, style) {
+  document.querySelectorAll('.style-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  selectedStyle = style;
+}
+
+function onFilesChange(input) {
+  Array.from(input.files).forEach(function(file) { processFile(file); });
+  input.value = '';
+}
+
+async function uploadToCloudinary(imgObj, index) {
+  try {
+    updateCardStatus(index, 'uploading', 'Subiendo...');
+    var formData = new FormData();
+    formData.append('file', imgObj.file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('api_key', CLOUDINARY_API_KEY);
+
+    var res = await fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD + '/image/upload', {
+      method: 'POST',
+      body: formData
+    });
+    var data = await res.json();
+    if (data.secure_url) {
+      images[index].cloudUrl = data.secure_url;
+      updateCardStatus(index, 'uploaded', '✓ Lista');
+      document.getElementById('debugBox').textContent = 'Cloudinary OK: ' + data.secure_url;
+    } else {
+      // Si falla el preset, intentar sin preset (unsigned)
+      updateCardStatus(index, 'error', 'Error upload');
+      document.getElementById('debugBox').textContent = 'Cloudinary error: ' + JSON.stringify(data).substring(0,200);
+    }
+  } catch(err) {
+    updateCardStatus(index, 'error', 'Error: ' + err.message);
+  }
+}
+
+function updateCardStatus(index, status, text) {
+  var grid = document.getElementById('imagesGrid');
+  var cards = grid.querySelectorAll('.img-card');
+  if (cards[index]) {
+    cards[index].className = 'img-card ' + status;
+    var statusEl = cards[index].querySelector('.upload-status');
+    if (statusEl) statusEl.textContent = text;
+  }
+}
+
+function renderGrid() {
+  var grid = document.getElementById('imagesGrid');
+  grid.innerHTML = '';
+  images.forEach(function(img, i) {
+    var opts = Object.keys(TYPE_LABELS).map(function(k) {
+      return '<option value="'+k+'"'+(img.type===k?' selected':'')+'>'+TYPE_LABELS[k]+'</option>';
+    }).join('');
+    var card = document.createElement('div');
+    card.className = 'img-card';
+    card.innerHTML = '<img src="'+img.dataUrl+'" alt="'+img.name+'">'
+      +'<div class="img-card-bottom"><select class="img-type-select" onchange="images['+i+'].type=this.value">'+opts+'</select>'
+      +'<button class="img-remove" onclick="removeImage('+i+')">×</button></div>'
+      +'<div class="upload-status" style="padding:2px 8px 6px;font-size:10px;color:#888">Subiendo...</div>';
+    grid.appendChild(card);
+  });
+}
+
+function removeImage(i) {
+  images.splice(i, 1);
+  renderGrid();
+  updateUI();
+}
+
+function processFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var name = file.name ? file.name.toLowerCase() : '';
+    var type = 'fachada';
+    if (name.includes('plant') || name.includes('pb')) type = 'planta';
+    else if (name.includes('corte')) type = 'corte';
+    else if (name.includes('perspectiva')) type = 'perspectiva';
+    var imgObj = { dataUrl: e.target.result, type: type, name: file.name || 'imagen.jpg', cloudUrl: null, file: file };
+    images.push(imgObj);
+    renderGrid();
+    updateUI();
+    uploadToCloudinary(imgObj, images.length - 1);
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateUI() {
+  var has = images.length > 0;
+  document.getElementById('runBtn').disabled = !has;
+  document.getElementById('runBtn').textContent = has ? 'Generar render' : 'Subí al menos un dibujo primero';
+}
+
+// Drag & drop en zona de upload
+var dropzone = document.getElementById('dropzoneArea');
+if (dropzone) {
+  dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.style.borderColor='#378ADD'; });
+  dropzone.addEventListener('dragleave', function() { dropzone.style.borderColor=''; });
+  dropzone.addEventListener('drop', function(e) {
+    e.preventDefault(); dropzone.style.borderColor='';
+    Array.from(e.dataTransfer.files).forEach(function(f) { processFile(f); });
+  });
+}
+
+// Pegar con Ctrl+V
+document.addEventListener('paste', function(e) {
+  var items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  Array.from(items).forEach(function(item) {
+    if (item.type.startsWith('image/')) processFile(item.getAsFile());
+  });
+});
+
+function getLoaderHTML() {
+  return '<div class="loader-wrap">'
+    + '<svg width="160" height="130" viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg">'
+    + '<rect x="10" y="120" width="140" height="4" fill="#A8A49A" rx="1"/>'
+    + '<rect x="20" y="95" width="90" height="25" fill="#D4CFC6" rx="1"/>'
+    + '<rect x="30" y="99" width="12" height="17" fill="#7AADCC" opacity="0.8"/>'
+    + '<rect x="52" y="99" width="12" height="17" fill="#7AADCC" opacity="0.8"/>'
+    + '<rect x="74" y="99" width="12" height="17" fill="#7AADCC" opacity="0.8"/>'
+    + '<rect x="20" y="68" width="90" height="25" fill="#DEDAD2" rx="1"/>'
+    + '<rect x="30" y="72" width="12" height="17" fill="#7AADCC" opacity="0.8"/>'
+    + '<rect x="52" y="72" width="12" height="17" fill="#7AADCC" opacity="0.8"/>'
+    + '<rect x="74" y="72" width="12" height="17" fill="#7AADCC" opacity="0.8"/>'
+    + '<rect x="20" y="55" width="60" height="11" fill="#E8E4DC" rx="1"/>'
+    + '<rect x="112" y="55" width="4" height="65" fill="#B8B4AC" opacity="0.7"/>'
+    + '<rect x="128" y="55" width="4" height="65" fill="#B8B4AC" opacity="0.7"/>'
+    + '<line x1="112" y1="70" x2="132" y2="70" stroke="#B8B4AC" stroke-width="2"/>'
+    + '<line x1="112" y1="85" x2="132" y2="85" stroke="#B8B4AC" stroke-width="2"/>'
+    + '<line x1="112" y1="100" x2="132" y2="100" stroke="#B8B4AC" stroke-width="2"/>'
+    + '<rect x="68" y="10" width="5" height="75" fill="#E8A020" rx="1"/>'
+    + '<rect x="28" y="10" width="82" height="5" fill="#E8A020" rx="1"/>'
+    + '<rect x="26" y="8" width="14" height="9" fill="#C07010" rx="1"/>'
+    + '<rect x="67" y="14" width="14" height="11" fill="#F0B030" rx="1"/>'
+    + '<circle cx="71" cy="10" r="3" fill="#FF4444" style="animation:blink 1s ease-in-out infinite"/>'
+    + '<line x1="100" y1="15" x2="100" y2="48" stroke="#888" stroke-width="1.2"/>'
+    + '<rect x="96" y="48" width="8" height="5" fill="#666" rx="1"/>'
+    + '<g style="animation:bob 1.2s ease-in-out infinite">'
+    + '<rect x="138" y="107" width="6" height="9" fill="#4080C0" rx="1"/>'
+    + '<ellipse cx="141" cy="105" rx="4" ry="4" fill="#F0A060"/>'
+    + '<rect x="138" y="101" width="8" height="4" fill="#FFD700" rx="2"/>'
+    + '</g>'
+    + '</svg>'
+    + '<div class="loader-label" id="statusMsg">Preparando...</div>'
+    + '</div>';
+}
+
+async function optimizePrompt() {
+  var desc = document.getElementById('promptText').value.trim();
+  if (!desc) { alert('Describí el proyecto primero'); return; }
+  var btn = document.getElementById('optimizeBtn');
+  var status = document.getElementById('optimizeStatus');
+  var box = document.getElementById('optimizedPromptBox');
+  btn.disabled = true;
+  btn.textContent = 'Optimizando...';
+  status.textContent = '';
+  box.style.display = 'none';
+  try {
+    var mainImg = images.find(function(i){return i.type==='fachada';}) || images[0];
+    var styleContext = document.querySelector('.style-btn.active') ? document.querySelector('.style-btn.active').textContent : 'Fotorrealista';
+    var res = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: 'Sos un experto en prompts para renders arquitectónicos con IA (Seedream, Flux, Stable Diffusion). El usuario describe su proyecto en español y vos generás UN prompt en inglés optimizado para image-to-image, maximizando fotorrealismo y fidelidad al diseño.\n\nEstilo seleccionado: ' + styleContext + '\nDescripción del usuario: ' + desc + '\n\nRespondé SOLO con el prompt en inglés. Sin explicaciones, sin comillas, sin puntos al final. Máximo 100 palabras. Siempre terminá con: 8k, photorealistic, professional architectural visualization, no watermark, no text, no cars.'
+        }]
+      })
+    });
+    var rawText = await res.text();
+    if (!rawText || rawText.trim() === '') throw new Error('Respuesta vacia');
+    var data = JSON.parse(rawText);
+    var optimized = data.content && data.content[0] && data.content[0].text;
+    if (optimized) {
+      optimized = optimized.trim();
+      box.textContent = optimized;
+      box.style.display = 'block';
+      box.dataset.prompt = optimized;
+      status.textContent = '✓ Prompt optimizado — se usará automáticamente al generar';
+      status.style.color = '#2a6a2a';
+    } else {
+      throw new Error('No se pudo optimizar');
+    }
+  } catch(err) {
+    status.textContent = 'Error: ' + err.message;
+    status.style.color = '#a32d2d';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Optimizar prompt con IA';
+  }
+}
+
+async function generateRender() {
+  if (!images.length) return;
+
+  var btn = document.getElementById('runBtn');
+  var resultBox = document.getElementById('resultBox');
+  var errorBox = document.getElementById('errorBox');
+  var successBox = document.getElementById('successBox');
+  var progressBar = document.getElementById('progressBar');
+  var progressFill = document.getElementById('progressFill');
+  var downloadLink = document.getElementById('downloadLink');
+  var debugBox = document.getElementById('debugBox');
+
+  errorBox.innerHTML = ''; successBox.innerHTML = '';
+  downloadLink.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Generando...';
+  progressBar.style.display = 'block'; progressFill.style.width = '5%';
+  resultBox.innerHTML = getLoaderHTML();
+
+  var optimizedBox = document.getElementById('optimizedPromptBox');
+  var extra = (optimizedBox && optimizedBox.dataset.prompt) ? optimizedBox.dataset.prompt : document.getElementById('promptText').value.trim();
+  var mainImg = images.find(function(i){return i.type==='fachada';}) || images[0];
+
+  var prog = 5;
+  var progInterval = setInterval(function() {
+    prog = Math.min(prog+2, 88);
+    progressFill.style.width = prog+'%';
+    var msg = document.getElementById('statusMsg');
+    if (msg) msg.textContent = 'Generando render... ' + Math.round(prog) + '%';
+  }, 1500);
+
+  try {
+    var imgUrl;
+
+    if (currentModel === 'seedream' || currentModel === 'seedream5') {
+      // Verificar que la imagen esté subida a Cloudinary
+      if (!mainImg.cloudUrl) {
+        // Esperar hasta 10 segundos a que suba
+        var waited = 0;
+        while (!mainImg.cloudUrl && waited < 10) {
+          await new Promise(function(r){setTimeout(r,1000);});
+          waited++;
+          var msg = document.getElementById('statusMsg');
+          if (msg) msg.textContent = 'Esperando que suba la imagen... ' + waited + 's';
+        }
+        if (!mainImg.cloudUrl) throw new Error('La imagen no terminó de subirse a Cloudinary. Esperá un momento y volvé a intentar.');
+      }
+
+      var isEdit = currentModel === 'seedream' || currentModel === 'seedream5';
+      var modelId = currentModel === 'seedream5' ? 'bytedance/seedream-v5.0-lite/edit' : 'bytedance/seedream-v4.5/edit';
+      var endpoint = 'https://api.wavespeed.ai/api/v3/' + modelId;
+
+      var basePrompt = 'Convert Figure 1 architectural hand-drawn sketch into a photorealistic architectural render. Preserve the exact facade composition and all design elements from the sketch. ' + selectedStyle;
+      if (extra) basePrompt += '. Additional details: ' + extra;
+      basePrompt += '. Asymmetric facade, keep exact proportions from sketch. 8k, professional architectural visualization, no watermark, no text, no cars';
+
+      // Incluir todas las imágenes subidas como referencia
+      var refImages = images.filter(function(i){return i.cloudUrl;}).map(function(i){return i.cloudUrl;});
+      if (!refImages.length) refImages = [mainImg.cloudUrl];
+
+      var body = {
+        prompt: basePrompt,
+        images: refImages,
+        size: '1280*720',
+        enable_base64_output: false,
+        enable_sync_mode: false
+      };
+
+      debugBox.textContent = 'Modelo: '+modelId+'\nImágenes: '+refImages.length+'\nPrompt: '+basePrompt.substring(0,120)+'...';
+
+      var res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer '+WAVESPEED_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      var rawText = await res.text();
+      debugBox.textContent = 'Submit: '+res.status+'\n'+rawText.substring(0,400);
+      if (!rawText||rawText.trim()==='') throw new Error('Respuesta vacía (HTTP '+res.status+')');
+      var data = JSON.parse(rawText);
+      if (!res.ok) throw new Error(data.message||data.error||JSON.stringify(data).substring(0,200));
+
+      var requestId = data.data && data.data.id;
+      if (!requestId) throw new Error('No se recibió request ID. '+JSON.stringify(data).substring(0,200));
+
+      // Polling
+      var attempts = 0;
+      while (attempts < 60) {
+        await new Promise(function(r){setTimeout(r,3000);});
+        attempts++;
+        var pollRes = await fetch('https://api.wavespeed.ai/api/v3/predictions/'+requestId+'/result', {
+          headers: { 'Authorization': 'Bearer '+WAVESPEED_KEY }
+        });
+        var pollText = await pollRes.text();
+        var pollData = JSON.parse(pollText);
+        debugBox.textContent = 'Poll '+attempts+': '+pollData.data.status+'\n'+pollText.substring(0,300);
+        var status = pollData.data && pollData.data.status;
+        if (status === 'completed') {
+          var outputs = pollData.data.outputs;
+          imgUrl = outputs && outputs[0];
+          if (!imgUrl) throw new Error('Completado pero sin imagen.');
+          break;
+        } else if (status === 'failed') {
+          throw new Error('El modelo falló: '+(pollData.data.error||'error desconocido'));
+        }
+        var msg = document.getElementById('statusMsg');
+        if (msg) msg.textContent = 'Generando con Seedream... (' + (attempts*3) + 's)';
+        if (attempts >= 60) throw new Error('Timeout — intentá de nuevo');
+      }
+
+    } else if (currentModel === 'seedream-t2i') {
+      var endpoint = 'https://api.wavespeed.ai/api/v3/bytedance/seedream-v4.5';
+      var prompt = selectedStyle + (extra ? ', ' + extra : '') + ', architecture, photorealistic, professional, no text, no watermark';
+      var body = { prompt: prompt, size: '1280*720', enable_base64_output: false, enable_sync_mode: false };
+      var res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer '+WAVESPEED_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      var rawText = await res.text();
+      var data = JSON.parse(rawText);
+      if (!res.ok) throw new Error(data.message||'Error');
+      var requestId = data.data && data.data.id;
+      var attempts = 0;
+      while (attempts < 60) {
+        await new Promise(function(r){setTimeout(r,3000);});
+        attempts++;
+        var pollRes = await fetch('https://api.wavespeed.ai/api/v3/predictions/'+requestId+'/result', { headers: { 'Authorization': 'Bearer '+WAVESPEED_KEY } });
+        var pollData = JSON.parse(await pollRes.text());
+        if (pollData.data.status === 'completed') { imgUrl = pollData.data.outputs && pollData.data.outputs[0]; break; }
+        else if (pollData.data.status === 'failed') throw new Error('Falló');
+        if (attempts >= 60) throw new Error('Timeout');
+      }
+
+    } else {
+      // Flux Dev
+      var inputImg = mainImg.dataUrl;
+      var prompt = selectedStyle + (extra ? ', ' + extra : '') + ', architecture, photorealistic, no text, no watermark';
+      var res = await fetch('https://fal.run/fal-ai/flux/dev/image-to-image', {
+        method: 'POST',
+        headers: { 'Authorization': 'Key '+FAL_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: inputImg, prompt: prompt, strength: 0.65, num_inference_steps: 28, guidance_scale: 7.5, num_images: 1, image_size: 'landscape_16_9', output_format: 'jpeg' })
+      });
+      var rawText = await res.text();
+      var data = JSON.parse(rawText);
+      if (!res.ok) throw new Error(data.detail||'Error Fal');
+      imgUrl = data.images && data.images[0] && data.images[0].url;
+    }
+
+    clearInterval(progInterval);
+    progressFill.style.width = '100%';
+
+    if (imgUrl) {
+      resultBox.innerHTML = '<img class="result-img" src="'+imgUrl+'" alt="render">';
+      downloadLink.href = imgUrl;
+      downloadLink.download = 'render.jpg';
+      downloadLink.style.display = 'block';
+      downloadLink.textContent = 'Descargar render';
+      debugBox.textContent = 'OK — ' + imgUrl;
+    } else {
+      throw new Error('No se recibió imagen.');
+    }
+
+  } catch(err) {
+    clearInterval(progInterval);
+    progressBar.style.display = 'none';
+    resultBox.innerHTML = '<p class="status">-</p>';
+    errorBox.innerHTML = '<div class="error">Error: '+(err.message||JSON.stringify(err))+'</div>';
+    debugBox.textContent = 'Error: '+(err.message||JSON.stringify(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generar render';
+  }
+}
+</script>
+</body>
+</html>
